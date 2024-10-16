@@ -48,8 +48,7 @@ Please first navigate to the `src` directory by using the cd command: `cd src`
 
 Then please create a folder named `experiments` to record the training process: `mkdir experiments`
 
-### Stage-1: Pre-training
-We provide the scripts under the folder `./scripts/`. You can train UrbanDiT as the following examples:
+You can train UrbanDiT as the following examples:
 
 ```
 python train_one_step.py --dataset your_training_dataset --batch_ratio 1.0 --norm_type standard --machine your_machine --time_patch 1 --stride 2 --t_patch_len 2  --is_prompt 1    --learning_rate 1e-4 --diffusion_steps 500 --num_inference_steps 20 --pred_len 12 --his_len 12

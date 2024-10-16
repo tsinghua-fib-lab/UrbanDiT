@@ -30,7 +30,7 @@ import os
 import random
 import torch.autograd.profiler as profiler
 
-from models import VDT_models
+from models import UrbanDiT_models
 #from diffusion import create_diffusion
 from diffusers.models import AutoencoderKL
 from mask_generator import VideoMaskGenerator
@@ -188,11 +188,8 @@ def main(args):
         logger = create_logger(None)
 
     # Create model:
-    #assert args.image_size % 8 == 0, "Image size must be divisible by 8 (for the VAE encoder)."
-    latent_size = 32
-   
-    model = VDT_models[args.model](
-        input_size=latent_size, args=args
+    model = UrbanDiT_models[args.model](
+        args=args
     ).to(device)
 
     # Note that parameter initialization is done within the DiT constructor
@@ -200,8 +197,6 @@ def main(args):
     requires_grad(ema, False)
     model = DDP(model.to(device), device_ids=[args.device_id], find_unused_parameters=True)
 
-    #diffusion = create_diffusion(timestep_respacing="", diffusion_steps=args.diffusion_steps,predict_xstart=bool(args.pred_xstart))  # default: 1000 steps, linear noise schedule
-    #vae = AutoencoderKL.from_pretrained(f"stabilityai/zhuzhukeji/sd-vae-ft-{args.vae}").to(device)
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # Setup optimizer (we used default Adam betas=(0.9, 0.999) and a constant learning rate of 1e-4 in our paper):
@@ -228,8 +223,6 @@ def main(args):
         drop_last=False
     )
 
-    #logger.info(f"Dataset contains {len(train_index):,} images ({args.data_path})")
-
     # Prepare models for training:
     update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights
     model.train()  # important! This enables embedding dropout for classifier-free guidance
@@ -252,7 +245,6 @@ def main(args):
     logger.info(f"Training for {args.epochs} epochs...")
 
     # Load scheduler and models
-    #noise_scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained('/data2/zhengyu/workspace/sd3', subfolder="scheduler")
     noise_scheduler = FlowMatchEulerDiscreteScheduler(num_train_timesteps = args.diffusion_steps, shift=3.0, use_dynamic_shifting=False, base_shift=0.5, max_shift=1.15)
     noise_scheduler_copy = copy.deepcopy(noise_scheduler)
 
@@ -288,7 +280,7 @@ def main(args):
             noise = torch.randn_like(model_input)
             bsz = model_input.shape[0]
 
-            # Sample a random timestep for each image
+            # Sample a random timestep for each sample
             # for weighting schemes where we sample timesteps non-uniformly
             u = compute_density_for_timestep_sampling(
                 weighting_scheme=args.weighting_scheme,
@@ -409,9 +401,6 @@ def main(args):
                         "opt": opt.state_dict(),
                         "args": args
                     }
-                    
-                    #checkpoint_path = f"{checkpoint_dir}/checkpoint_best.pt"
-                    # torch.save(checkpoint, checkpoint_path)
                     model_path = f"{checkpoint_dir}/model_best.pth"
                     torch.save(model.module.state_dict(), model_path)
                     logger.info(f"Saved checkpoint to {checkpoint_dir}")
@@ -426,9 +415,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # Default args here will train DiT-XL/2 with the hyperparameters we used in our paper (except training iters).
     parser = argparse.ArgumentParser()
-    #parser.add_argument("--data-path", type=str, required=True)
     parser.add_argument("--results-dir", type=str, default="experiments_all_task")
     parser.add_argument("--pretrained_file_path", type=str, default='')
     parser.add_argument("--mode", type=str, default="train")
@@ -460,7 +447,7 @@ if __name__ == "__main__":
     parser.add_argument("--multi_patch_size", type=str, default='2-2-100')
     parser.add_argument("--few_ratio", type=float, default=1.0)
     parser.add_argument("--few_data", type=str, default='')
-    parser.add_argument("--model", type=str, choices=list(VDT_models.keys()), default="VDT-S/2")
+    parser.add_argument("--model", type=str, choices=list(UrbanDiT_models.keys()), default="UrbanDiT-S/2")
     parser.add_argument("--epochs", type=int, default=1500)
     parser.add_argument("--global_batch_size", type=int, default=8)
     parser.add_argument("--global_seed", type=int, default=0)
@@ -469,7 +456,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_every", type=int, default=10)
     parser.add_argument("--ckpt_every", type=int, default=10)
     parser.add_argument("--num_memory", type=int, default=512)
-    parser.add_argument("--prompt_content", type=str, default='')
+    parser.add_argument("--prompt_content", type=str, default='psptpfpm')
     parser.add_argument("--is_prompt", type=int, default=0)
     parser.add_argument("--pred_len", type=int, default=12)
     parser.add_argument("--his_len", type=int, default=12)

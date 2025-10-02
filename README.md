@@ -2,6 +2,7 @@
 
 A pytorch implementation for the paper: **UrbanDiT: A Foundation Model for Open-World Urban Spatio-Temporal Learning**.
 
+NeurIPS 2025
 
 -----
 
